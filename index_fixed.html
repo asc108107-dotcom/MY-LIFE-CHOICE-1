@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的人生，我的選擇</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;background:linear-gradient(135deg,#eef8f1,#f8fbff);color:#24332b}
+.app{max-width:850px;margin:auto;padding:24px 16px 40px}
+.card{background:#fff;border-radius:24px;padding:32px;box-shadow:0 12px 35px rgba(40,70,55,.12);min-height:560px}
+h1,h2{margin-top:0}.subtitle{color:#66736c}.stage{font-weight:700;color:#4b8260;background:#eef8f1;display:inline-block;padding:8px 14px;border-radius:999px}
+.progress{height:10px;background:#e8eee9;border-radius:20px;margin:20px 0}.bar{height:100%;width:0;background:#5fa777;border-radius:20px;transition:.4s}
+.question{font-size:1.45rem;line-height:1.65;margin:26px 0}.option{width:100%;text-align:left;padding:18px 20px;margin:12px 0;border:2px solid #e2e9e4;background:#fff;border-radius:16px;font-size:1rem;cursor:pointer;transition:.2s}.option:hover{transform:translateY(-2px);border-color:#73ad85;background:#f7fcf8}.result{background:#f6faf7;border-radius:16px;padding:20px;line-height:1.8;margin-top:20px}.next{display:block;margin:20px auto 0;border:0;background:#5a9b70;color:#fff;padding:14px 26px;border-radius:999px;font-size:1rem;cursor:pointer}.hidden{display:none}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}.stat{background:#f7faf8;border-radius:15px;padding:12px}.score{font-weight:700}.note{font-size:.9rem;color:#6b756e;margin-top:16px}.ending{line-height:1.9;font-size:1.05rem}.restart{margin-top:20px}
+@media(max-width:520px){.card{padding:22px 18px}.question{font-size:1.25rem}.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main class="app"><section class="card" id="app"></section></main>
+<script>
+const S={health:50,relations:50,mind:50,career:50,adapt:50};
+let path=[], step=0;
+const labels={health:"💪 身體健康",relations:"🤝 人際關係",mind:"💖 心靈健康",career:"💼 事業發展",adapt:"🌱 適應能力"};
+const stages={baby:"👶 幼兒期（0–6歲）",child:"🧒 兒童期（7–12歲）",teen:"🧑 青少年期（13–18歲）",adult:"🧑‍💼 成年期（19–65歲）",old:"👴 老年期（65歲以上）"};
+
+function add(o){Object.entries(o).forEach(([k,v])=>S[k]+=v)}
+const flow={
+start:{stage:"baby",q:"你非常想要一個玩具，但爸爸媽媽告訴你：「今天不能買。」你會怎麼做？",options:[
+["😭 大哭大鬧，希望爸爸媽媽改變主意","你暫時得到大人的注意，但還沒有學會如何面對失望。",{mind:-3,adapt:-2},"emotion"],
+["😔 雖然很失望，但接受爸爸媽媽的決定","你開始理解：不是所有想要的事情都可以立刻得到。",{mind:2,adapt:3},"discipline"],
+["💬 問爸爸媽媽：「我可以存零用錢自己買嗎？」","你嘗試用溝通與規劃來達成目標。",{adapt:4,relations:2},"planning"]]},
+emotion:{stage:"child",q:"分組活動時，你沒有被分到自己最想加入的小組。你會怎麼做？",options:[
+["😡 生氣地拒絕合作","你的情緒影響了合作，部分同學開始不知道如何和你相處。",{relations:-5,mind:-2},"conflict"],
+["🙂 雖然不高興，但願意試著和新同學合作","你發現原來不同的組合也可能帶來新的朋友。",{adapt:4,relations:3},"self_control"]]},
+discipline:{stage:"child",q:"明天要考試，但朋友邀請你出去玩。你會怎麼做？",options:[
+["🎮 先出去玩，考試以後再說","你享受當下的快樂，但隔天可能因準備不足而感到壓力。",{relations:2,career:-3,mind:-2},"temptation"],
+["📚 先完成複習，再安排和朋友玩的時間","你開始練習在責任與休閒之間取得平衡。",{career:3,adapt:3,relations:2},"balance"]]},
+planning:{stage:"child",q:"你得到一筆零用錢，你會怎麼使用？",options:[
+["🛍️ 全部買喜歡的東西","你享受了購物的快樂，但很快發現錢用完了。",{mind:1,adapt:-2},"spend"],
+["🏦 一部分花掉，一部分存起來","你開始思考現在的需要與未來的目標。",{adapt:4,mind:2},"save"]]},
+conflict:{stage:"teen",q:"你和最好的朋友吵架了。你很生氣，會怎麼做？",options:[
+["📱 立刻在社群媒體上發文抱怨","你暫時抒發了情緒，但公開抱怨讓關係更加緊張。",{relations:-5,mind:-3},"work_conflict"],
+["🗣️ 先讓自己冷靜，再找朋友談談","你沒有立刻解決問題，但學會用溝通處理衝突。",{relations:5,adapt:3,mind:2},"teamwork"]]},
+self_control:{stage:"teen",q:"朋友邀請你做一件你其實不太舒服的事，並說：「大家都這樣做。」你會怎麼選？",options:[
+["😶 不想被排擠，跟著大家做","你暫時融入團體，但也開始懷疑自己是否真的想這樣做。",{relations:2,mind:-3,adapt:-1},"follow"],
+["🧭 禮貌拒絕，做自己認為合適的選擇","你需要一些勇氣，但逐漸建立自己的界線。",{mind:4,adapt:4},"principle"]]},
+temptation:{stage:"teen",q:"你發現自己每天花很多時間滑手機與玩遊戲，升學準備卻越來越少。你會怎麼做？",options:[
+["🎮 繼續玩，覺得以後再努力就好","你獲得短暫放鬆，但時間管理問題開始影響你的目標。",{health:-2,career:-5,adapt:-2},"unstable_job"],
+["⏰ 設定讀書與娛樂時間","你逐漸培養自律，也保留休息與娛樂的空間。",{career:5,adapt:4,mind:2},"job_choice"]]},
+balance:{stage:"teen",q:"面對升學與未來，你會如何選擇方向？",options:[
+["👥 跟著朋友選同樣的方向，感覺比較安全","你減少了做決定的壓力，但未來仍可能需要重新探索自己。",{relations:1,adapt:-1},"unstable_job"],
+["🔎 蒐集資料、了解興趣，再和信任的人討論","你雖然還沒有百分之百確定，但開始為自己的選擇負責。",{career:4,adapt:4,mind:2},"job_choice"]]},
+spend:{stage:"teen",q:"朋友開始追求流行品牌，邀請你一起購買昂貴商品。你會怎麼做？",options:[
+["💸 跟著買，先享受再說","你融入朋友的話題，但財務壓力可能逐漸增加。",{relations:2,adapt:-3,mind:-1},"unstable_job"],
+["🧾 先評估自己真正需要什麼","你開始學會根據自己的資源做決定。",{adapt:4,mind:2},"job_choice"]]},
+save:{stage:"teen",q:"你開始思考未來科系，你會如何做決定？",options:[
+["💰 選擇大家認為收入最高的方向","你重視未來的穩定與經濟發展。",{career:4,mind:-1},"high_stress"],
+["❤️ 優先選擇自己真正感興趣的方向","你重視興趣與成就感，但未來可能需要面對收入不穩定。",{mind:4,career:2},"passion_job"]]},
+work_conflict:{stage:"adult",q:"成年後，你和同事意見不合。你會怎麼處理？",options:[
+["📢 直接公開批評對方","你快速表達立場，但團隊關係可能惡化。",{career:-2,relations:-5,mind:-2},"isolated_old"],
+["🤝 私下溝通，嘗試了解彼此想法","你花了更多時間處理問題，但逐漸建立合作能力。",{career:4,relations:5,adapt:3},"connected_old"]]},
+teamwork:{stage:"adult",q:"你獲得升職機會，但代表更長的工作時間。你會怎麼選？",options:[
+["🚀 接受升職，全力投入事業","你的事業快速成長，但生活與健康開始受到壓縮。",{career:7,health:-4,relations:-3},"wealthy_old"],
+["⚖️ 重新協調工作與生活時間","你的成長速度可能較慢，但保留更多照顧自己與家人的空間。",{career:3,health:4,relations:5,mind:4},"balanced_old"]]},
+follow:{stage:"adult",q:"你現在的工作其實不是很喜歡，但生活已經很穩定。你會怎麼做？",options:[
+["🏢 繼續做下去，維持穩定","你得到安全感，但偶爾仍會想像另一種人生。",{career:3,mind:-2},"stable_old"],
+["🎓 利用空閒時間進修，探索新方向","改變需要付出努力，但你重新找回學習的感覺。",{adapt:5,career:3,mind:3},"growth_old"]]},
+principle:{stage:"adult",q:"你喜歡目前的工作，但收入不算高。你會怎麼做？",options:[
+["❤️ 繼續投入喜歡的工作","你保有成就感，但需要學習管理有限的資源。",{mind:5,career:2,adapt:2},"passion_old"],
+["➕ 發展其他技能或兼職收入","生活變得忙碌，但你開始增加選擇與彈性。",{career:4,adapt:5,health:-1},"growth_old"]]},
+unstable_job:{stage:"adult",q:"成年後，你發現現在的工作不太符合自己的期待。你會怎麼做？",options:[
+["😓 先忍耐，不做改變","生活維持穩定，但不滿逐漸累積。",{career:1,mind:-4,adapt:-2},"stable_old"],
+["🔄 學習新技能，慢慢轉換方向","過程有壓力，但你重新掌握人生的選擇權。",{adapt:6,career:4,mind:3},"growth_old"]]},
+job_choice:{stage:"adult",q:"你同時得到兩份工作機會，你會選哪一份？",options:[
+["💰 薪水高，但工時很長","你得到更多收入與職涯機會，但健康與生活時間受到考驗。",{career:7,health:-5,relations:-3},"wealthy_old"],
+["🌿 薪水較低，但生活較有彈性","你有更多時間照顧自己與重要的人。",{career:3,health:4,relations:5,mind:4},"balanced_old"]]},
+high_stress:{stage:"adult",q:"你擁有高薪工作，但壓力讓你開始失眠。你會怎麼做？",options:[
+["💼 繼續拼事業，告訴自己要撐住","事業持續前進，但身心壓力不斷累積。",{career:5,health:-6,mind:-6},"wealthy_old"],
+["🧑‍⚕️ 尋求協助，重新調整生活與工作","你沒有放棄目標，而是學習用更健康的方式走下去。",{career:2,health:5,mind:6,adapt:4},"balanced_old"]]},
+passion_job:{stage:"adult",q:"你很喜歡自己的工作，但收入並不穩定。你會怎麼做？",options:[
+["🎨 繼續堅持理想","你保有熱情，但需要面對財務上的不確定。",{mind:5,career:1,adapt:2},"passion_old"],
+["📈 發展其他收入來源","你仍保留興趣，也讓生活增加更多穩定性。",{career:5,adapt:5,mind:2},"growth_old"]]},
+isolated_old:{stage:"old",q:"退休後，你發現自己很少主動和家人朋友聯絡。接下來你會怎麼做？",options:[
+["🏠 大部分時間待在家裡，自己過生活","你享受安靜，但生活圈可能逐漸縮小。",{relations:-3,mind:-2,health:-1},"END"],
+["📞 主動聯絡朋友與家人","重新建立關係需要勇氣，但陪伴能讓生活更豐富。",{relations:6,mind:4,adapt:3},"END"]]},
+connected_old:{stage:"old",q:"退休後，你擁有一群願意支持你的朋友與家人。你想如何度過新的生活？",options:[
+["👨‍👩‍👧 多花時間陪伴家人朋友","你把人生重心放在人與人的連結上。",{relations:6,mind:4},"END"],
+["🙋‍♀️ 參與志工服務，認識更多人","你將人生經驗轉化成對他人的幫助。",{relations:5,mind:5,adapt:3},"END"]]},
+wealthy_old:{stage:"old",q:"退休後，你的經濟狀況很好，但健康或人際關係曾受到工作影響。你會怎麼選？",options:[
+["✈️ 用退休金好好享受生活","你開始把時間重新留給自己。",{mind:4,health:2},"END"],
+["❤️ 主動修復關係，安排更多陪伴時間","你發現有些重要的事情，仍然值得重新開始。",{relations:6,mind:5},"END"]]},
+balanced_old:{stage:"old",q:"退休後，你的生活相對穩定，也保有健康與重要的人際關係。你想做什麼？",options:[
+["🌱 學習新的興趣與技能","你保持好奇心，讓人生持續有新的目標。",{mind:5,adapt:5},"END"],
+["🤝 陪伴家人並參與社區活動","你持續維持人際連結，也獲得生活支持。",{relations:6,mind:4,health:2},"END"]]},
+stable_old:{stage:"old",q:"退休後，你回想自己的一生，覺得有些地方很穩定，但也有些遺憾。你會怎麼做？",options:[
+["😌 接受過去，享受現在","你開始理解人生不一定要完美，才能值得被肯定。",{mind:4},"END"],
+["📚 開始學習一件以前沒做過的事","你發現人生到了晚年，仍然可以重新開始。",{mind:5,adapt:6},"END"]]},
+growth_old:{stage:"old",q:"退休後，你仍然對世界保持好奇。你會怎麼使用自己的時間？",options:[
+["📖 持續學習與挑戰新事物","你的生活持續充滿新的可能。",{mind:5,adapt:5},"END"],
+["🧑‍🏫 分享自己的經驗，幫助年輕人","你把一路走來的經驗轉化成對別人的支持。",{relations:5,mind:5},"END"]]},
+passion_old:{stage:"old",q:"退休後，你回頭看見自己曾經勇敢追求喜歡的事情。接下來你會怎麼做？",options:[
+["🎨 持續投入興趣","興趣仍然讓你的生活充滿熱情。",{mind:6},"END"],
+["👥 和更多人分享自己的興趣","你透過興趣認識新朋友，也讓生活更加豐富。",{relations:5,mind:5},"END"]]
+};
+
+function renderStart(){
+document.getElementById("app").innerHTML=`<h1>🧭 我的生命，我的選擇</h1><p class="subtitle">一個選擇，會帶你走向不同的人生道路。</p><div class="result"><b>遊戲方式：</b><br>從幼兒期開始，你將面對不同的人生選擇。你的選擇會改變下一個階段遇到的問題，也會影響最後的人生結果。<br><br><b>沒有標準答案。</b>每個選擇都有可能帶來不同的收穫與挑戰。</div><button class="next" onclick="begin()">開始我的人生 →</button>`;
+}
+function begin(){step=0;path=[];Object.keys(S).forEach(k=>S[k]=50);render("start")}
+function render(id){
+const n=flow[id], app=document.getElementById("app");
+const pct=Math.min(100,(step/5)*100);
+app.innerHTML=`<span class="stage">${stages[n.stage]}</span><div class="progress"><div class="bar" style="width:${pct}%"></div></div><div class="question">${n.q}</div><div id="opts"></div><p class="note">你的每個選擇，都可能改變下一階段會遇到的問題。</p>`;
+const opts=document.getElementById("opts");
+n.options.forEach((o,i)=>{let b=document.createElement("button");b.className="option";b.textContent=o[0];b.onclick=()=>choose(o);opts.appendChild(b)});
+}
+function choose(o){
+add(o[2]);path.push(o[0]);step++;
+const app=document.getElementById("app");
+app.innerHTML=`<span class="stage">你的選擇造成的影響</span><div class="result">${o[1]}</div><button class="next" onclick="${o[3]==='END'?'finish()':`render('${o[3]}')`}">${o[3]==='END'?'查看我的人生結果':'進入下一個人生階段 →'}</button>`;
+}
+function finish(){
+let max=Object.entries(S).sort((a,b)=>b[1]-a[1])[0][0];
+let title={health:"健康生活的守護者",relations:"溫暖關係的連結者",mind:"內在力量的探索者",career:"目標明確的實踐者",adapt:"勇敢改變的成長者"}[max];
+let msg={health:"你在生命中逐漸理解，健康是支持所有夢想的重要基礎。",relations:"你的人生中最重要的力量之一，是你與他人建立的關係。",mind:"你逐漸學會理解自己的情緒與需求，並找到讓自己重新站起來的方法。",career:"你願意為目標努力，也逐漸建立自己的方向與能力。",adapt:"你的最大特色不是從不犯錯，而是遇到改變時，願意重新學習與選擇。"}[max];
+document.getElementById("app").innerHTML=`<h1>🌈 你的人生結果</h1><h2>「${title}」</h2><p class="ending">${msg}<br><br>回顧你的人生，你的每一次選擇都留下了影響。有些選擇帶來優勢，有些選擇也帶來挑戰。但人生不是只有一次決定，每一個階段都還有重新選擇的機會。</p><div class="stats">${Object.entries(S).map(([k,v])=>`<div class="stat">${labels[k]}<br><span class="score">${Math.max(0,Math.min(100,v))}/100</span></div>`).join("")}</div><div class="result"><b>💡 最重要的提醒</b><br>過去的選擇會影響未來，但不會完全決定未來。</div><button class="next restart" onclick="begin()">🔄 重新體驗另一種人生</button>`;
+}
+renderStart();
+</script></body></html>
